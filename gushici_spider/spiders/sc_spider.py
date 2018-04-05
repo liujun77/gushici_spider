@@ -1,6 +1,7 @@
 import scrapy
 from scrapy.contrib.spiders import CrawlSpider, Rule
 from scrapy.contrib.linkextractors import LinkExtractor
+from gushici_spider.items import GushiciSpiderItem
 
 class GscSpider(CrawlSpider):
 
@@ -17,6 +18,6 @@ class GscSpider(CrawlSpider):
         """
         parse poem
         """
-        item = scrapy.Item()
+        item = GushiciSpiderItem()
         print response.url + "liujun77"
         return item
