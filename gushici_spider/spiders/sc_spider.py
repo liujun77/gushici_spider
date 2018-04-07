@@ -7,13 +7,16 @@ from gushici_spider.items import GushiciSpiderItem
 class GscSpider(CrawlSpider):
 
     name = "sc_spider"
-    start_urls = ["https://www.gushiwen.org/"]
-    allowed_dpmians = ["gushiwen.org"]
+    start_urls = ["https://sou-yun.com/PoemIndex.aspx?"]
+    allowed_dpmians = ["sou-yun.com"]
     rules = (
         Rule(LinkExtractor(allow=('/authors/*',),
                            deny=('/guwen/*', '/mingju/*')), follow=True),
         Rule(LinkExtractor(allow=('/shiwenv_*')), callback='parse_item'),
     )
+
+    def parse_dynasty(self, response):
+        pass
 
     def parse_item(self, response):
         """
