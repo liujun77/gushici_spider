@@ -13,11 +13,10 @@ class GushiciSpiderItem(scrapy.Item):
     gushici item
     """
     # define the fields for your item here like:
-    url = scrapy.Field()
     title = scrapy.Field()
     author = scrapy.Field()
     era = scrapy.Field()
-    pre_text = scrapy.Field()
     text = scrapy.Field()
-    tags = scrapy.Field()
-    popular = scrapy.Field()
+    type = scrapy.Field()
+    subtype = scrapy.Field()
+    yun = scrapy.Field()
