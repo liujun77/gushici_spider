@@ -53,22 +53,34 @@ TYPE_DICT = {'JieJu': u'\u7edd\u53e5',
 class GscSpider(CrawlSpider):
 
     name = "sc_spider"
-    start_urls = ["https://sou-yun.com/PoemIndex.aspx?"]
+    start_urls = ["https://sou-yun.com/PoemIndex.aspx"]
     allowed_dpmians = ["sou-yun.com"]
     rules = (
-        Rule(LinkExtractor(allow=('/P*dynasty=*author=*type=*')),
+        Rule(LinkExtractor(allow=('/*type=*')),
+             follow=False,
              callback='parse_item'),
-        Rule(LinkExtractor(allow=('/P*dynasty=*author=*')),
+        Rule(LinkExtractor(allow=('/PoemIndex.aspx\?dynasty=\w+&author=*')),
+             follow=False,
              callback='parse_author'),
-        Rule(LinkExtractor(allow=('/P*dynasty=*')),
+        Rule(LinkExtractor(allow=('/PoemIndex.aspx\?dynasty=\w+')),
+             follow=False,
              callback='parse_dynasty'),
-        Rule(LinkExtractor(allow=('/PoemIndex*')),),
+        #Rule(LinkExtractor(allow=('/PoemIndex.aspx'), deny=('/*path*')),
+        #     callback='parse_index'),
     )
+
+    #def parse_start_url(self, response):
+    #    print Colors.GREEN + response.url + Colors.ENDC
+    #    dynasties = response.xpath('//a[contains(@class, "list")]/@href').extract()
+    #    print len(dynasties)
+    #    for dynasty in dynasties:
+    #        yield scrapy.Request(response.urljoin(dynasty))
 
     def parse_dynasty(self, response):
         print Colors.YELLOW + response.url + Colors.ENDC
-        authors = response.xpath('//div[contains(@class, "list1")]')
-        authors_url = authors.xpath('div[contains(@class, "inline")]/a/@href').extract()
+        #authors = response.xpath('//div[contains(@class, "list1")]')
+        authors_url = response.xpath('//a[contains(@href, "author")]/@href').extract()
+        print len(authors_url)
         for author_url in authors_url:
             yield scrapy.Request(response.urljoin(author_url))
 
