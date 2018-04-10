@@ -1,8 +1,34 @@
 import scrapy
 import re
+import urllib
 from scrapy.contrib.spiders import CrawlSpider, Rule
 from scrapy.contrib.linkextractors import LinkExtractor
 from gushici_spider.items import GushiciSpiderItem
+
+LEFT_BRA = u'\uff08'
+NONASC = u'[^\x00-\x7F]'
+YA_YUN = u'\u62bc' + '(' + NONASC + ')' + u'\u97f5'
+CH_BLANK = u'\u3000'
+YAN = u'\u8a00'
+
+ERA_DICT = {'XianQin': u'\u5148\u79e6',
+            'Qin': u'\u79e6',
+            'Han': u'\u6c49',
+            'WeiJin': u'\u9b4f\u664b',
+            'NanBei': u'\u5357\u5317\u671d',
+            'Sui': u'\u968b',
+            'Tang': u'\u5510',
+            'Song': u'\u5b8b',
+            'Liao': u'\u8fbd',
+            'Jin': u'\u91d1',
+            'Yuan': u'\u5143',
+            'Ming': u'\u660e',
+            'Qing': u'\u6e05',
+            'Jindai': u'\u8fd1\u73b0\u4ee3',
+            'Dangdai': u'\u5f53\u4ee3',}
+
+TYPE_DICT = {'JieJu': u'\u7edd\u53e5',
+             'Lu': u'\u5f8b\u8bd7',}
 
 class GscSpider(CrawlSpider):
 
@@ -34,15 +60,33 @@ class GscSpider(CrawlSpider):
         """
         parse poem
         """
+        poem_type = re.search('.*type=(\w+).*', response.url).group(1)
+        poem_era = re.search('.*dynasty=(\w+)&author.*', response.url).group(1)
+        poem_author = urllib.unquote(re.search('.*author(.*)&type=.*', response.url).group(1))
+
         items = response.xpath('//div[contains(@id, "item")]')
         for it in items:
-            item = GushiciSpiderItem()
-            item['title'] = []
-            for title in it.xpath('div[contains(@class, "title")]/text()').extract():
-                item['title'].append(title)
-            item['url'] = re.search('.*shiwenv_(\w+).aspx', response.url).group(1)
-            item['author'] = response.xpath('//p/a[contains(@href, "authorv")]/text()').extract()[0]
-            item['era'] = response.xpath('//p/a[contains(@href, "shiwen")]/text()').extract()[0]
+            titles = it.xpath('div[contains(@class, "title")]')
+            contents = it.xpath('div[contains(@class, "content")]')
+
+            for i in range(len(titles)):
+                item = GushiciSpiderItem()
+                item['author'] = poem_author
+                item['era'] = ERA_DICT[poem_era]
+                item['type'] = poem_type
+                title = titles[i].xpath('text()').extract()
+                item['title'] = re.search('('+NONASC+'+)'+LEFT_BRA, title[0]).group(1)
+                item['subtype'] = None
+                item['yun'] = None
+                if len(title) > 1:
+                    yun = re.search(YA_YUN, title[1])
+                    item['yun'] = yun.group(1) if yun is not None else None
+                    if poem_type == 'Ci':
+                        item['subtype'] = title[0].split(CH_BLANK)[0]
+                    else:
+                        jiyan = re.search(CH_BLANK+'(\W'+YAN+'\W{2})'+CH_BLANK, title[1])
+                        item['subtype'] = jiyan.group(1) if jiyan is not None else None
+
 
         cont_resp = response.xpath('//div[contains(@id, "contson")]')[0]
         pre_text = cont_resp.xpath('p/span/text()').extract()
