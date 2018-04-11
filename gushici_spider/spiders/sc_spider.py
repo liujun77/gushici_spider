@@ -1,8 +1,8 @@
 import scrapy
 import re
 import urllib
-from scrapy.contrib.spiders import CrawlSpider, Rule
-from scrapy.contrib.linkextractors import LinkExtractor
+from scrapy.contrib.spiders import Spider
+#from scrapy.contrib.linkextractors import LinkExtractor
 from gushici_spider.items import GushiciSpiderItem
 
 LEFT_BRA = u'\uff08'
@@ -50,45 +50,56 @@ TYPE_DICT = {'JieJu': u'\u7edd\u53e5',
              'Qu': u'\u66f2',
              'ChuCi': u'\u9a9a',}
 
-class GscSpider(CrawlSpider):
+class GscSpider(Spider):
 
     name = "sc_spider"
     start_urls = ["https://sou-yun.com/PoemIndex.aspx"]
     allowed_dpmians = ["sou-yun.com"]
-    rules = (
-        Rule(LinkExtractor(allow=('/*type=*')),
-             follow=False,
-             callback='parse_item'),
-        Rule(LinkExtractor(allow=('/PoemIndex.aspx\?dynasty=\w+&author=*')),
-             follow=False,
-             callback='parse_author'),
-        Rule(LinkExtractor(allow=('/PoemIndex.aspx\?dynasty=\w+')),
-             follow=False,
-             callback='parse_dynasty'),
-        #Rule(LinkExtractor(allow=('/PoemIndex.aspx'), deny=('/*path*')),
-        #     callback='parse_index'),
-    )
 
-    #def parse_start_url(self, response):
-    #    print Colors.GREEN + response.url + Colors.ENDC
-    #    dynasties = response.xpath('//a[contains(@class, "list")]/@href').extract()
-    #    print len(dynasties)
-    #    for dynasty in dynasties:
-    #        yield scrapy.Request(response.urljoin(dynasty))
+    def parse(self, response):
+        url = response.url
+
+        if url == "https://sou-yun.com/PoemIndex.aspx":
+            for dynasty in self.parse_index(response):
+                yield scrapy.Request(response.urljoin(dynasty))
+        #elif re.match('.*dynasty.*author.*type.*', url) is not None:
+        #    pass
+        elif re.match('.*dynasty.*author.*', url) is not None:
+            for typ in self.parse_author(response):
+                yield scrapy.Request(response.urljoin(typ),
+                                     callback=self.parse_item)
+        elif re.match('.*dynasty=X.*', url) is not None:
+            for author in self.parse_dynasty(response):
+                yield scrapy.Request(response.urljoin(author))
+        else:
+            print Colors.CYAN + 'not match' + Colors.ENDC
+
+    def parse_index(self, response):
+        """
+        parse index to dynasties
+        """
+        print Colors.GREEN + 'index' + Colors.ENDC
+        print Colors.GREEN + response.url + Colors.ENDC
+        dynasties = response.xpath('//a[contains(@class, "list")]/@href').extract()
+        print len(dynasties)
+        return dynasties
 
     def parse_dynasty(self, response):
+        """
+        parse dynasty to authors
+        """
         print Colors.YELLOW + response.url + Colors.ENDC
         #authors = response.xpath('//div[contains(@class, "list1")]')
-        authors_url = response.xpath('//a[contains(@href, "author")]/@href').extract()
-        print len(authors_url)
-        for author_url in authors_url:
-            yield scrapy.Request(response.urljoin(author_url))
+        authors = response.xpath('//a[contains(@href, "author")]/@href').extract()
+        print len(authors)
+        return authors
 
     def parse_author(self, response):
         print Colors.RED + response.url + Colors.ENDC
+        poem_author = urllib.unquote(re.search('.*author=(.*)', response.url).group(1))
+        print Colors.RED + poem_author + Colors.ENDC
         types = response.xpath('//a[contains(@class, "list")]/@href').extract()
-        for typ in types:
-            yield scrapy.Request(response.urljoin(typ))
+        return types
 
     def parse_item(self, response):
         """
@@ -97,7 +108,7 @@ class GscSpider(CrawlSpider):
         print Colors.BLUE + response.url + Colors.ENDC
         poem_type = re.search('.*type=(\w+).*', response.url).group(1)
         poem_era = re.search('.*dynasty=(\w+)&author.*', response.url).group(1)
-        poem_author = urllib.unquote(re.search('.*author(.*)&type=.*', response.url).group(1))
+        poem_author = unicode(urllib.unquote(re.search('.*author=(.*)&type=.*', response.url).group(1)), 'utf-8')
 
         items = response.xpath('//div[contains(@id, "item")]')
         for it in items:
@@ -144,7 +155,7 @@ class GscSpider(CrawlSpider):
         curr_str = re.search('.*=(\d+)', response.url)
         curr = int(curr_str.group(1)) if curr_str is not None else 0
         nex = response.xpath('//div[contains(@class, "poem")]/a/@href').extract()
-        if nex is None:
+        if len(nex) == 0:
             return
         next_n = int(re.search('.*=(\d+)', nex[-1]).group(1))
         if next_n == curr + 1:
