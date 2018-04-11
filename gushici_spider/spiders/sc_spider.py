@@ -6,10 +6,12 @@ from scrapy.contrib.spiders import Spider
 from gushici_spider.items import GushiciSpiderItem
 
 LEFT_BRA = u'\uff08'
+RIGHT_BRA = u'\uff09'
 NONASC = u'[^\x00-\x7F]'
 YA_YUN = u'\u62bc' + '(' + NONASC + ')' + u'\u97f5'
 CH_BLANK = u'\u3000'
 YAN = u'\u8a00'
+C_NUM = u'[\u2460-\u246e]'
 
 class Colors:
     BLUE = '\033[0;34m'
@@ -48,6 +50,7 @@ TYPE_DICT = {'JieJu': u'\u7edd\u53e5',
              'QuCi': u'\u4e50\u5e9c\u66f2\u8f9e',
              'Jie': u'\u5048\u9882',
              'Qu': u'\u66f2',
+             'Fu': u'\u8f9e\u8d4b',
              'ChuCi': u'\u9a9a',}
 
 class GscSpider(Spider):
@@ -125,8 +128,7 @@ class GscSpider(Spider):
                 item['type'] = TYPE_DICT[poem_type]
 
                 title = titles[i].xpath('string(.)').extract()[0]
-                print(Colors.BLUE + title + Colors.ENDC)
-                #item['title'] = re.search('('+NONASC+'+)'+LEFT_BRA, title[0]).group(1).strip()
+                print(Colors.BROWN + title + Colors.ENDC)
                 item['title'] = title.split(LEFT_BRA+item['era'])[0].strip()
                 if sub_n > 1:
                     if i == 0:
@@ -144,10 +146,12 @@ class GscSpider(Spider):
                     item['subtype'] = jiyan.group(1) if jiyan is not None else None
 
                 item['text'] = []
-                for line in contents[i].xpath('p'):
-                    str_sentences = line.extract().split('!')
-                    for sentence in str_sentences:
-                        item['text'].append(''.join(re.findall('>('+NONASC+'+)<', sentence)))
+                content_str = re.split('p\>|!', contents[i].extract())
+                for line in content_str:
+                    sentence = ''.join(re.findall(NONASC, line))
+                    sentence = re.sub(LEFT_BRA+'.*'+RIGHT_BRA+'|'+C_NUM+'|'+CH_BLANK, '', sentence)
+                    if len(sentence) > 0:
+                        item['text'].append(sentence)
 
                 yield item
 

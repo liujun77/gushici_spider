@@ -68,7 +68,8 @@ ITEM_PIPELINES = {
     'gushici_spider.pipelines.GushiciSpiderPipeline': 300,
 }
 
-LOG_LEVEL = 'DEBUG'
+LOG_LEVEL = 'INFO'
+#LOG_LEVEL = 'DEBUG'
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://doc.scrapy.org/en/latest/topics/autothrottle.html
 #AUTOTHROTTLE_ENABLED = True
