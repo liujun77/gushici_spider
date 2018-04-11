@@ -112,7 +112,7 @@ class GscSpider(Spider):
 
         items = response.xpath('//div[contains(@id, "item")]')
         for it in items:
-            titles = it.xpath('div[contains(@class, "title")]')
+            titles = it.xpath('div[@class="title"]')
             contents = it.xpath('div[contains(@class, "content")]')
             main_title = titles[0].xpath('text()').extract()[0].split(LEFT_BRA)[0]
             sub_n = len(titles)
