@@ -49,7 +49,7 @@ class GscSpider(scrapy.Spider):
             for typ in self.parse_author(response):
                 yield scrapy.Request(response.urljoin(typ),
                                      callback=self.parse_item)
-        elif re.match('.*dynasty=X.*', url) is not None:
+        elif re.match('.*dynasty=.*', url) is not None:
             for author in self.parse_dynasty(response):
                 yield scrapy.Request(response.urljoin(author))
         else:
