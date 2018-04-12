@@ -1,8 +1,6 @@
 import scrapy
 import re
 import urllib
-from scrapy.contrib.spiders import Spider
-#from scrapy.contrib.linkextractors import LinkExtractor
 from gushici_spider.items import GushiciSpiderItem
 
 LEFT_BRA = u'\uff08'
@@ -23,37 +21,19 @@ class Colors:
     YELLOW = '\033[1;33m'
     ENDC = '\033[0m'
 
-ERA_DICT = {'XianQin': u'\u5148\u79e6',
-            'Qin': u'\u79e6',
-            'Han': u'\u6c49',
-            'WeiJin': u'\u9b4f\u664b',
-            'NanBei': u'\u5357\u5317\u671d',
-            'Sui': u'\u968b',
-            'Tang': u'\u5510',
-            'Song': u'\u5b8b',
-            'Liao': u'\u8fbd',
-            'Jin': u'\u91d1',
-            'Yuan': u'\u5143',
-            'Ming': u'\u660e',
-            'Qing': u'\u6e05',
-            'Jindai': u'\u8fd1\u73b0\u4ee3',
-            'Dangdai': u'\u5f53\u4ee3',}
+ERA_DICT = {'XianQin': u'\u5148\u79e6', 'Qin': u'\u79e6', 'Han': u'\u6c49',
+            'WeiJin': u'\u9b4f\u664b', 'NanBei': u'\u5357\u5317\u671d', 'Sui': u'\u968b',
+            'Tang': u'\u5510', 'Song': u'\u5b8b', 'Liao': u'\u8fbd',
+            'Jin': u'\u91d1', 'Yuan': u'\u5143', 'Ming': u'\u660e',
+            'Qing': u'\u6e05', 'Jindai': u'\u8fd1\u73b0\u4ee3', 'Dangdai': u'\u5f53\u4ee3',}
 
-TYPE_DICT = {'JieJu': u'\u7edd\u53e5',
-             'Lu': u'\u5f8b\u8bd7',
-             'PaiLu': u'\u6392\u5f8b',
-             'GuFeng': u'\u53e4\u98ce',
-             'Ci': u'\u8bcd',
-             'SiYan': u'\u56db\u8a00\u8bd7',
-             'LiuYan': u'\u516d\u8a00\u8bd7',
-             'Ju': u'\u53e5',
-             'QuCi': u'\u4e50\u5e9c\u66f2\u8f9e',
-             'Jie': u'\u5048\u9882',
-             'Qu': u'\u66f2',
-             'Fu': u'\u8f9e\u8d4b',
+TYPE_DICT = {'JieJu': u'\u7edd\u53e5', 'Lu': u'\u5f8b\u8bd7', 'PaiLu': u'\u6392\u5f8b',
+             'GuFeng': u'\u53e4\u98ce', 'Ci': u'\u8bcd', 'SiYan': u'\u56db\u8a00\u8bd7',
+             'LiuYan': u'\u516d\u8a00\u8bd7', 'Ju': u'\u53e5', 'QuCi': u'\u4e50\u5e9c\u66f2\u8f9e',
+             'Jie': u'\u5048\u9882', 'Qu': u'\u66f2', 'Fu': u'\u8f9e\u8d4b',
              'ChuCi': u'\u9a9a',}
 
-class GscSpider(Spider):
+class GscSpider(scrapy.Spider):
 
     name = "sc_spider"
     start_urls = ["https://sou-yun.com/PoemIndex.aspx"]
@@ -65,8 +45,6 @@ class GscSpider(Spider):
         if url == "https://sou-yun.com/PoemIndex.aspx":
             for dynasty in self.parse_index(response):
                 yield scrapy.Request(response.urljoin(dynasty))
-        #elif re.match('.*dynasty.*author.*type.*', url) is not None:
-        #    pass
         elif re.match('.*dynasty.*author.*', url) is not None:
             for typ in self.parse_author(response):
                 yield scrapy.Request(response.urljoin(typ),
@@ -92,7 +70,6 @@ class GscSpider(Spider):
         parse dynasty to authors
         """
         print(Colors.YELLOW + response.url + Colors.ENDC)
-        #authors = response.xpath('//div[contains(@class, "list1")]')
         authors = response.xpath('//a[contains(@href, "author")]/@href').extract()
         print(len(authors))
         return authors
