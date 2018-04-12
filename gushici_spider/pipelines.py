@@ -10,18 +10,28 @@ import codecs
 class GushiciSpiderPipeline(object):
 
     def __init__(self):
-        #self.output_file = codecs.open('out.json', 'w', encoding='utf-8')
-        self.output_file = codecs.open('out.json', 'w', encoding='utf-8')
+        self.index = 0
+        self.buf = []
+        self.output_file = codecs.open('out'+str(self.index)+'.json', 'w',
+                                       encoding='utf-8')
 
     def process_item(self, item, spider):
-        #line = json.dumps(dict(item), ensure_ascii=False) + "\n"
-        print(dict(item))
-        json.dump(dict(item), self.output_file, ensure_ascii=False)
-        #self.output_file.write(line)
+        self.buf.append(dict(item))
+        if len(self.buf) == 100:
+            json.dump(self.buf, self.output_file,
+                      sort_keys=True, indent=4,
+                      ensure_ascii=False)
+            self.output_file.close()
+            self.index += 1
+            self.output_file = codecs.open('out'+str(self.index)+'.json', 'w',
+                                           encoding='utf-8')
+            self.buf = []
+
         return item
 
     def close_spider(self, spider):
+        if len(self.buf) > 0:
+            json.dump(self.buf, self.output_file,
+                      sort_keys=True, indent=4,
+                      ensure_ascii=False)
         self.output_file.close()
-
-    #with open('data.json', 'w') as fp:
-    #        json.dump(data, fp)

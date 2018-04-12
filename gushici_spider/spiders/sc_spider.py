@@ -88,7 +88,9 @@ class GscSpider(scrapy.Spider):
         print(Colors.BLUE + response.url + Colors.ENDC)
         poem_type = re.search('.*type=(\w+).*', response.url).group(1)
         poem_era = re.search('.*dynasty=(\w+)&author.*', response.url).group(1)
-        poem_author = unicode(urllib.unquote(re.search('author=(.*)&type', response.url).group(1)), 'utf-8')
+        poem_author = urllib.unquote(re.search('author=(.*)&type', response.url).group(1))
+        poem_author = unicode(poem_author, 'utf-8')
+        poem_author = ''.join(re.findall(NONASC, poem_author))
 
         items = response.xpath('//div[contains(@id, "item")]')
         for it in items:
@@ -105,19 +107,19 @@ class GscSpider(scrapy.Spider):
                 item['type'] = TYPE_DICT[poem_type]
 
                 title = titles[i].xpath('string(.)').extract()[0]
-                print(Colors.BROWN + title + Colors.ENDC)
                 item['title'] = title.split(LEFT_BRA+item['era'])[0].strip()
                 if sub_n > 1:
                     if i == 0:
                         item['title'] = main_title + CH_BLANK + u'\u5176\u4e00'
                     else:
                         item['title'] = main_title + CH_BLANK + item['title']
+                print(Colors.BROWN+item['title']+' '+item['era']+' '+item['author']+Colors.ENDC)
 
                 yun = re.search(YA_YUN, title)
                 item['yun'] = yun.group(1) if yun is not None else None
                 item['subtype'] = None
                 if poem_type == 'Ci':
-                    item['subtype'] = re.split(CH_BLANK+'|'+LEFT_BRA, item['title'])[0]
+                    item['subtype'] = re.split(CH_BLANK+'| |'+LEFT_BRA, item['title'])[0]
                 else:
                     jiyan = re.search(CH_BLANK+'(\W'+YAN+'\W{2})'+CH_BLANK, title)
                     item['subtype'] = jiyan.group(1) if jiyan is not None else None
