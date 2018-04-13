@@ -10,6 +10,7 @@ YA_YUN = u'\u62bc' + '(' + NONASC + ')' + u'\u97f5'
 CH_BLANK = u'\u3000'
 YAN = u'\u8a00'
 C_NUM = u'[\u2460-\u246e]'
+QI_YI = u'\u5176\u4e00'
 
 class Colors:
     BLUE = '\033[0;34m'
@@ -26,6 +27,11 @@ ERA_DICT = {'XianQin': u'\u5148\u79e6', 'Qin': u'\u79e6', 'Han': u'\u6c49',
             'Tang': u'\u5510', 'Song': u'\u5b8b', 'Liao': u'\u8fbd',
             'Jin': u'\u91d1', 'Yuan': u'\u5143', 'Ming': u'\u660e',
             'Qing': u'\u6e05', 'Jindai': u'\u8fd1\u73b0\u4ee3', 'Dangdai': u'\u5f53\u4ee3',}
+
+ERA_D = ''
+for era in ERA_DICT.values():
+    ERA_D += '|' + LEFT_BRA + era
+ERA_D = ERA_D[1:]
 
 TYPE_DICT = {'JieJu': u'\u7edd\u53e5', 'Lu': u'\u5f8b\u8bd7', 'PaiLu': u'\u6392\u5f8b',
              'GuFeng': u'\u53e4\u98ce', 'Ci': u'\u8bcd', 'SiYan': u'\u56db\u8a00\u8bd7',
@@ -81,6 +87,48 @@ class GscSpider(scrapy.Spider):
         types = response.xpath('//a[contains(@class, "list")]/@href').extract()
         return types
 
+    def parse_title(self, item):
+        titles = item.xpath('div[@class="title"]')
+        titles = titles.xpath('string(.)').extract()
+        yuns = []
+        subtypes = []
+        for i in range(len(titles)):
+            yun = re.search(YA_YUN, titles[i])
+            yuns.append(yun.group(1) if yun is not None else None)
+            jiyan = re.search(CH_BLANK+'(\W'+YAN+'\W{2})'+CH_BLANK, titles[i])
+            subtypes.append(jiyan.group(1) if jiyan is not None else None)
+            titles[i] = re.split(ERA_D, titles[i])[0].strip()
+        if len(titles) == 1:
+            return titles, yuns, subtypes
+        tsplit = []
+        for title in titles:
+            tsplit.append(re.split(' |'+CH_BLANK, title))
+        pos_qi_t0 = len(tsplit[0])
+        for i in range(len(tsplit[0])):
+            if tsplit[0][i][0] == QI_YI[0] and len(tsplit[0][i]) < 4:
+                pos_qi_t0 = i
+                break
+        pos_qi_t1 = 0
+        for i in range(len(tsplit[1])):
+            if tsplit[1][i][0] == QI_YI[0] and len(tsplit[1][i]) < 4:
+                pos_qi_t1 = i
+                break
+        main_title = ' '
+        if pos_qi_t0 < len(tsplit[0]):
+            main_title = ' '.join(tsplit[0][0: pos_qi_t0-pos_qi_t1])
+        else:
+            main_title = ' '.join(tsplit[0][0: pos_qi_t0-(len(tsplit[1])-1)])
+        for i in range(len(tsplit)):
+            if i == 0:
+                if pos_qi_t0 < len(tsplit[0]):
+                    titles[i] = ' '.join(tsplit[0])
+                else:
+                    tsplit[0].insert(len(tsplit[0])-(len(tsplit[1])-1-pos_qi_t1), QI_YI)
+                    titles[i] = ' '.join(tsplit[0])
+            else:
+                titles[i] = main_title + ' ' + ' '.join(tsplit[i])
+        return titles, yuns, subtypes
+
     def parse_item(self, response):
         """
         parse poem
@@ -94,9 +142,14 @@ class GscSpider(scrapy.Spider):
 
         items = response.xpath('//div[contains(@id, "item")]')
         for it in items:
-            titles = it.xpath('div[@class="title"]')
+            titles, yuns, subtypes = self.parse_title(it)
+            #for t_str in new_titles:
+            #    print(t_str)
+            #print('****press any key to continue\n')
+            #raw_input()
+            #titles = it.xpath('div[@class="title"]')
             contents = it.xpath('div[contains(@class, "content")]')
-            main_title = titles[0].xpath('text()').extract()[0].split(LEFT_BRA+ERA_DICT[poem_era])[0].strip()
+            #main_title = titles[0].xpath('text()').extract()[0].split(LEFT_BRA+ERA_DICT[poem_era])[0].strip()
             sub_n = len(titles)
 
             for i in range(sub_n):
@@ -106,23 +159,26 @@ class GscSpider(scrapy.Spider):
                 item['era'] = ERA_DICT[poem_era]
                 item['type'] = TYPE_DICT[poem_type]
 
-                title = titles[i].xpath('string(.)').extract()[0]
-                item['title'] = title.split(LEFT_BRA+item['era'])[0].strip()
-                if sub_n > 1:
-                    if i == 0:
-                        item['title'] = main_title + CH_BLANK + u'\u5176\u4e00'
-                    else:
-                        item['title'] = main_title + CH_BLANK + item['title']
+                #title = titles[i].xpath('string(.)').extract()[0]
+                #item['title'] = title.split(LEFT_BRA+item['era'])[0].strip()
+                item['title'] = titles[i]
+                #if sub_n > 1:
+                #    if i == 0:
+                #        item['title'] = main_title + CH_BLANK + u'\u5176\u4e00'
+                #    else:
+                #        item['title'] = main_title + CH_BLANK + item['title']
                 print(Colors.BROWN+item['title']+' '+item['era']+' '+item['author']+Colors.ENDC)
 
-                yun = re.search(YA_YUN, title)
-                item['yun'] = yun.group(1) if yun is not None else None
-                item['subtype'] = None
-                if poem_type == 'Ci':
-                    item['subtype'] = re.split(CH_BLANK+'| |'+LEFT_BRA, item['title'])[0]
-                else:
-                    jiyan = re.search(CH_BLANK+'(\W'+YAN+'\W{2})'+CH_BLANK, title)
-                    item['subtype'] = jiyan.group(1) if jiyan is not None else None
+                #yun = re.search(YA_YUN, title)
+                #item['yun'] = yun.group(1) if yun is not None else None
+                #item['subtype'] = None
+                item['yun'] = yuns[i]
+                item['subtype'] = subtypes[i]
+                #if poem_type == 'Ci':
+                #    item['subtype'] = re.split(CH_BLANK+'| |'+LEFT_BRA, item['title'])[0]
+                #else:
+                #    jiyan = re.search(CH_BLANK+'(\W'+YAN+'\W{2})'+CH_BLANK, title)
+                #    item['subtype'] = jiyan.group(1) if jiyan is not None else None
 
                 item['text'] = []
                 content_str = re.split('p\>|!', contents[i].extract())
