@@ -56,7 +56,7 @@ class GscSpider(scrapy.Spider):
                 for typ in self.parse_author(response):
                     yield scrapy.Request(response.urljoin(typ),
                                      callback=self.parse_item)
-        elif re.match('.*dynasty=D.*', url) is not None:
+        elif re.match('.*dynasty=.*', url) is not None:
             for author in self.parse_dynasty(response):
                 yield scrapy.Request(response.urljoin(author))
         else:
@@ -138,12 +138,12 @@ class GscSpider(scrapy.Spider):
         """
         parse poem
         """
-        print(Colors.BLUE + response.url + Colors.ENDC)
         poem_type = re.search('.*type=(\w+).*', response.url).group(1)
         poem_era = re.search('.*dynasty=(\w+)&author.*', response.url).group(1)
         poem_author = urllib.unquote(re.search('author=(.*)&type', response.url).group(1))
         poem_author = unicode(poem_author, 'utf-8')
         poem_author = ''.join(re.findall(NONASC, poem_author))
+        print(Colors.BLUE+response.url+poem_author+'|'+poem_type+Colors.ENDC)
 
         items = response.xpath('//div[contains(@id, "item")]')
         for it in items:
@@ -158,8 +158,8 @@ class GscSpider(scrapy.Spider):
                 item['era'] = ERA_DICT[poem_era]
                 item['type'] = TYPE_DICT[poem_type]
                 item['title'] = titles[i]
-                if sub_n > 1:
-                    print(Colors.BROWN+item['title']+' '+item['era']+' '+item['author']+Colors.ENDC)
+                #if sub_n > 1:
+                #print(Colors.BROWN+item['author']+' '+item['era']+' | '+item['title']+Colors.ENDC)
                 item['yun'] = yuns[i]
                 item['subtype'] = subtypes[i]
 
