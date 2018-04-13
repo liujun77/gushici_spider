@@ -37,7 +37,7 @@ TYPE_DICT = {'JieJu': u'\u7edd\u53e5', 'Lu': u'\u5f8b\u8bd7', 'PaiLu': u'\u6392\
              'GuFeng': u'\u53e4\u98ce', 'Ci': u'\u8bcd', 'SiYan': u'\u56db\u8a00\u8bd7',
              'LiuYan': u'\u516d\u8a00\u8bd7', 'Ju': u'\u53e5', 'QuCi': u'\u4e50\u5e9c\u66f2\u8f9e',
              'Jie': u'\u5048\u9882', 'Qu': u'\u66f2', 'Fu': u'\u8f9e\u8d4b',
-             'ChuCi': u'\u9a9a',}
+             'QinCao': u'\u7434\u64cd', 'ChuCi': u'\u9a9a',}
 
 class GscSpider(scrapy.Spider):
 
@@ -51,11 +51,12 @@ class GscSpider(scrapy.Spider):
         if url == "https://sou-yun.com/PoemIndex.aspx":
             for dynasty in self.parse_index(response):
                 yield scrapy.Request(response.urljoin(dynasty))
-        elif re.match('.*dynasty.*author.*', url) is not None:
-            for typ in self.parse_author(response):
-                yield scrapy.Request(response.urljoin(typ),
+        elif re.match('.*dynasty.*author=.*', url) is not None:
+            if re.match('.*dynasty.*author=%e6%b7%bb.*', url) is not None:
+                for typ in self.parse_author(response):
+                    yield scrapy.Request(response.urljoin(typ),
                                      callback=self.parse_item)
-        elif re.match('.*dynasty=.*', url) is not None:
+        elif re.match('.*dynasty=D.*', url) is not None:
             for author in self.parse_dynasty(response):
                 yield scrapy.Request(response.urljoin(author))
         else:
@@ -102,7 +103,7 @@ class GscSpider(scrapy.Spider):
             return titles, yuns, subtypes
         tsplit = []
         for title in titles:
-            tsplit.append(re.split(' |'+CH_BLANK, title))
+            tsplit.append(filter(None, re.split(' |'+CH_BLANK, title)))
         pos_qi_t0 = len(tsplit[0])
         for i in range(len(tsplit[0])):
             if tsplit[0][i][0] == QI_YI[0] and len(tsplit[0][i]) < 4:
@@ -126,7 +127,8 @@ class GscSpider(scrapy.Spider):
                     tsplit[0].insert(len(tsplit[0])-(len(tsplit[1])-1-pos_qi_t1), QI_YI)
                     titles[i] = ' '.join(tsplit[0])
             else:
-                titles[i] = main_title + ' ' + ' '.join(tsplit[i])
+                tsplit[i].insert(0, main_title)
+                titles[i] = ' '.join(tsplit[i])
         return titles, yuns, subtypes
 
     def parse_item(self, response):
@@ -143,13 +145,7 @@ class GscSpider(scrapy.Spider):
         items = response.xpath('//div[contains(@id, "item")]')
         for it in items:
             titles, yuns, subtypes = self.parse_title(it)
-            #for t_str in new_titles:
-            #    print(t_str)
-            #print('****press any key to continue\n')
-            #raw_input()
-            #titles = it.xpath('div[@class="title"]')
             contents = it.xpath('div[contains(@class, "content")]')
-            #main_title = titles[0].xpath('text()').extract()[0].split(LEFT_BRA+ERA_DICT[poem_era])[0].strip()
             sub_n = len(titles)
 
             for i in range(sub_n):
@@ -158,27 +154,11 @@ class GscSpider(scrapy.Spider):
                 item['author'] = poem_author
                 item['era'] = ERA_DICT[poem_era]
                 item['type'] = TYPE_DICT[poem_type]
-
-                #title = titles[i].xpath('string(.)').extract()[0]
-                #item['title'] = title.split(LEFT_BRA+item['era'])[0].strip()
                 item['title'] = titles[i]
-                #if sub_n > 1:
-                #    if i == 0:
-                #        item['title'] = main_title + CH_BLANK + u'\u5176\u4e00'
-                #    else:
-                #        item['title'] = main_title + CH_BLANK + item['title']
-                print(Colors.BROWN+item['title']+' '+item['era']+' '+item['author']+Colors.ENDC)
-
-                #yun = re.search(YA_YUN, title)
-                #item['yun'] = yun.group(1) if yun is not None else None
-                #item['subtype'] = None
+                if sub_n > 0:
+                    print(Colors.BROWN+item['title']+' '+item['era']+' '+item['author']+Colors.ENDC)
                 item['yun'] = yuns[i]
                 item['subtype'] = subtypes[i]
-                #if poem_type == 'Ci':
-                #    item['subtype'] = re.split(CH_BLANK+'| |'+LEFT_BRA, item['title'])[0]
-                #else:
-                #    jiyan = re.search(CH_BLANK+'(\W'+YAN+'\W{2})'+CH_BLANK, title)
-                #    item['subtype'] = jiyan.group(1) if jiyan is not None else None
 
                 item['text'] = []
                 content_str = re.split('p\>|!', contents[i].extract())
