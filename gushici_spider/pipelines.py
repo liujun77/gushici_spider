@@ -17,7 +17,7 @@ class GushiciSpiderPipeline(object):
 
     def process_item(self, item, spider):
         self.buf.append(dict(item))
-        if len(self.buf) == 1000:
+        if len(self.buf) == 5000:
             json.dump(self.buf, self.output_file,
                       sort_keys=True, indent=4,
                       ensure_ascii=False)

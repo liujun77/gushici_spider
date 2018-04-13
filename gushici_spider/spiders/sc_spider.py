@@ -52,7 +52,7 @@ class GscSpider(scrapy.Spider):
             for dynasty in self.parse_index(response):
                 yield scrapy.Request(response.urljoin(dynasty))
         elif re.match('.*dynasty.*author=.*', url) is not None:
-            if re.match('.*dynasty.*author=%e6%b7%bb.*', url) is not None:
+            if re.match('.*dynasty.*author=.*', url) is not None:
                 for typ in self.parse_author(response):
                     yield scrapy.Request(response.urljoin(typ),
                                      callback=self.parse_item)
@@ -98,7 +98,7 @@ class GscSpider(scrapy.Spider):
             yuns.append(yun.group(1) if yun is not None else None)
             jiyan = re.search(CH_BLANK+'(\W'+YAN+'\W{2})'+CH_BLANK, titles[i])
             subtypes.append(jiyan.group(1) if jiyan is not None else None)
-            titles[i] = re.split(ERA_D, titles[i])[0].strip()
+            titles[i] = re.split(ERA_D, titles[i])[0]
         if len(titles) == 1:
             return titles, yuns, subtypes
         tsplit = []
@@ -119,6 +119,8 @@ class GscSpider(scrapy.Spider):
             main_title = ' '.join(tsplit[0][0: pos_qi_t0-pos_qi_t1])
         else:
             main_title = ' '.join(tsplit[0][0: pos_qi_t0-(len(tsplit[1])-1)])
+        if main_title == '':
+            main_title = tsplit[0][0]
         for i in range(len(tsplit)):
             if i == 0:
                 if pos_qi_t0 < len(tsplit[0]):
@@ -127,7 +129,8 @@ class GscSpider(scrapy.Spider):
                     tsplit[0].insert(len(tsplit[0])-(len(tsplit[1])-1-pos_qi_t1), QI_YI)
                     titles[i] = ' '.join(tsplit[0])
             else:
-                tsplit[i].insert(0, main_title)
+                if titles[i][0] == ' ' or titles[i][0] == CH_BLANK:
+                    tsplit[i].insert(0, main_title)
                 titles[i] = ' '.join(tsplit[i])
         return titles, yuns, subtypes
 
@@ -155,7 +158,7 @@ class GscSpider(scrapy.Spider):
                 item['era'] = ERA_DICT[poem_era]
                 item['type'] = TYPE_DICT[poem_type]
                 item['title'] = titles[i]
-                if sub_n > 0:
+                if sub_n > 1:
                     print(Colors.BROWN+item['title']+' '+item['era']+' '+item['author']+Colors.ENDC)
                 item['yun'] = yuns[i]
                 item['subtype'] = subtypes[i]
